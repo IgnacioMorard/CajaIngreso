@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Check de Cajas</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #0f1117;
+      color: #e2e4e9;
+      min-height: 100vh;
+      padding: 1.5rem 1rem 4rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    header h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(1.3rem, 4vw, 2rem);
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+    header h1 span { color: #22c55e; }
+    header p {
+      margin-top: 0.4rem;
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+
+    /* Stats bar */
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .stat {
+      text-align: center;
+    }
+    .stat-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .stat-val.green { color: #22c55e; }
+    .stat-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+
+    /* Search */
+    .search-bar {
+      max-width: 480px;
+      margin: 0 auto 1.5rem;
+      position: relative;
+    }
+    .search-bar input {
+      width: 100%;
+      padding: 0.75rem 1rem 0.75rem 2.6rem;
+      border: 1px solid #2a2d37;
+      border-radius: 10px;
+      background: #1a1d27;
+      color: #e2e4e9;
+      font-size: 0.95rem;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-bar input:focus { border-color: #22c55e; }
+    .search-bar input::placeholder { color: #4b5060; }
+    .search-bar::before {
+      content: "🔍";
+      position: absolute;
+      left: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.95rem;
+      pointer-events: none;
+    }
+
+    /* Loading */
+    #loading {
+      text-align: center;
+      padding: 3rem 0;
+      color: #6b7280;
+      font-style: italic;
+    }
+    #loading .spinner {
+      display: inline-block;
+      width: 28px; height: 28px;
+      border: 3px solid #2a2d37;
+      border-top-color: #22c55e;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-bottom: 0.6rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Card grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 0.75rem;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #1a1d27;
+      border: 1px solid #2a2d37;
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+      user-select: none;
+      position: relative;
+      overflow: hidden;
+    }
+    .card:hover { border-color: #3a3d47; background: #1e2130; transform: translateY(-1px); }
+    .card.selected { border-color: #22c55e; background: #141824; }
+    .card.checked {
+      border-color: #1a3a25;
+      background: #111916;
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
+    .card-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #22c55e;
+      min-width: 55px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .card.checked .card-num { color: #4b7a55; }
+
+    .card-info { flex: 1; min-width: 0; }
+    .card-detail {
+      font-size: 0.85rem;
+      color: #c5c8d0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-weight {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+
+    .card-check {
+      width: 26px; height: 26px;
+      border: 2px solid #3a3d47;
+      border-radius: 7px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .card.selected .card-check {
+      border-color: #22c55e;
+      background: #22c55e;
+    }
+    .card.selected .card-check::after {
+      content: "✓";
+      color: #0f1117;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+    .card.checked .card-check {
+      border-color: #4b7a55;
+      background: #4b7a55;
+    }
+    .card.checked .card-check::after {
+      content: "✓";
+      color: #111916;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    /* Floating confirm bar */
+    .confirm-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #1a1d27ee;
+      backdrop-filter: blur(12px);
+      border-top: 1px solid #2a2d37;
+      padding: 0.9rem 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+      z-index: 100;
+    }
+    .confirm-bar.visible { transform: translateY(0); }
+
+    .confirm-bar .count {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: #c5c8d0;
+    }
+    .confirm-bar .count b { color: #22c55e; }
+
+    .btn-confirm {
+      padding: 0.65rem 1.8rem;
+      border: none;
+      border-radius: 8px;
+      background: #22c55e;
+      color: #0f1117;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn-confirm:hover { background: #1db04f; }
+    .btn-confirm:active { transform: scale(0.97); }
+    .btn-confirm:disabled { background: #4b5060; cursor: not-allowed; }
+
+    .btn-cancel {
+      padding: 0.65rem 1.2rem;
+      border: 1px solid #3a3d47;
+      border-radius: 8px;
+      background: transparent;
+      color: #9ca0ab;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .btn-cancel:hover { border-color: #6b7280; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      top: 1.2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(-120%);
+      background: #22c55e;
+      color: #0f1117;
+      font-weight: 700;
+      font-size: 0.9rem;
+      padding: 0.7rem 1.5rem;
+      border-radius: 8px;
+      z-index: 200;
+      transition: transform 0.35s ease;
+      pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.error { background: #ef4444; color: #fff; }
+
+    .empty-msg {
+      text-align: center;
+      color: #6b7280;
+      padding: 2rem 0;
+    }
+
+    @media (max-width: 420px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>📦 Check de <span>Cajas</span></h1>
+    <p>Seleccioná las cajas y confirmá el check</p>
+  </header>
+
+  <div class="stats" id="stats" style="display:none">
+    <div class="stat">
+      <div class="stat-val" id="statTotal">0</div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val green" id="statChecked">0</div>
+      <div class="stat-label">Checkeadas</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="statPending">0</div>
+      <div class="stat-label">Pendientes</div>
+    </div>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="Buscar por Nº o detalle..." disabled>
+  </div>
+
+  <div id="loading">
+    <div class="spinner"></div><br>
+    Cargando cajas...
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="confirm-bar" id="confirmBar">
+    <span class="count"><b id="selCount">0</b> seleccionada(s)</span>
+    <button class="btn-confirm" id="btnConfirm" onclick="confirmarCheck()">Confirmar Check</button>
+    <button class="btn-cancel" onclick="clearSelection()">Cancelar</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ⚡ Reemplazá esta URL con tu WebApp /exec
+    const API_URL = "https://script.google.com/macros/s/TU_SCRIPT_ID/exec";
+
+    let cajas = [];
+    let selected = new Set(); // Nº seleccionados
+
+    // ── Load ──
+    async function cargarCajas() {
+      document.getElementById("loading").style.display = "block";
+      document.getElementById("grid").innerHTML = "";
+      document.getElementById("stats").style.display = "none";
+
+      try {
+        const resp = await fetch(API_URL);
+        cajas = await resp.json();
+        renderGrid(cajas);
+        updateStats();
+        document.getElementById("stats").style.display = "flex";
+        document.getElementById("searchInput").disabled = false;
+      } catch (e) {
+        document.getElementById("grid").innerHTML =
+          "<p class='empty-msg'>⚠️ Error al cargar las cajas.</p>";
+      } finally {
+        document.getElementById("loading").style.display = "none";
+      }
+    }
+
+    // ── Render ──
+    function renderGrid(items) {
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+
+      if (items.length === 0) {
+        grid.innerHTML = "<p class='empty-msg'>No se encontraron cajas.</p>";
+        return;
+      }
+
+      items.forEach(c => {
+        const card = document.createElement("div");
+        card.className = "card" + (c.checked ? " checked" : "") + (selected.has(c.numero) ? " selected" : "");
+        card.dataset.numero = c.numero;
+
+        card.innerHTML = `
+          <div class="card-num">#${c.numero}</div>
+          <div class="card-info">
+            <div class="card-detail" title="${c.detalle}">${c.detalle}</div>
+            <div class="card-weight">${c.peso} kg</div>
+          </div>
+          <div class="card-check"></div>
+        `;
+
+        if (!c.checked) {
+          card.onclick = () => toggleSelect(c.numero);
+        }
+
+        grid.appendChild(card);
+      });
+    }
+
+    // ── Select / Deselect ──
+    function toggleSelect(numero) {
+      if (selected.has(numero)) {
+        selected.delete(numero);
+      } else {
+        selected.add(numero);
+      }
+      refreshCards();
+      updateBar();
+    }
+
+    function clearSelection() {
+      selected.clear();
+      refreshCards();
+      updateBar();
+    }
+
+    function refreshCards() {
+      document.querySelectorAll(".card:not(.checked)").forEach(card => {
+        const num = Number(card.dataset.numero);
+        card.classList.toggle("selected", selected.has(num));
+      });
+    }
+
+    function updateBar() {
+      const bar = document.getElementById("confirmBar");
+      document.getElementById("selCount").textContent = selected.size;
+      bar.classList.toggle("visible", selected.size > 0);
+    }
+
+    // ── Stats ──
+    function updateStats() {
+      const total = cajas.length;
+      const checked = cajas.filter(c => c.checked).length;
+      document.getElementById("statTotal").textContent = total;
+      document.getElementById("statChecked").textContent = checked;
+      document.getElementById("statPending").textContent = total - checked;
+    }
+
+    // ── Search ──
+    document.getElementById("searchInput").addEventListener("input", function () {
+      const q = this.value.toLowerCase().trim();
+      if (!q) {
+        renderGrid(cajas);
+        return;
+      }
+      const filtered = cajas.filter(c =>
+        String(c.numero).includes(q) ||
+        c.detalle.toLowerCase().includes(q)
+      );
+      renderGrid(filtered);
+    });
+
+    // ── Confirm ──
+    async function confirmarCheck() {
+      if (selected.size === 0) return;
+
+      const btn = document.getElementById("btnConfirm");
+      btn.disabled = true;
+      btn.textContent = "Enviando...";
+
+      try {
+        const numeros = Array.from(selected);
+        const resp = await fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({ numeros }),
+        });
+        const result = await resp.json();
+
+        if (result.ok) {
+          showToast(`✅ ${result.count} caja(s) checkeada(s)`);
+        } else {
+          showToast("❌ " + (result.error || "Error al confirmar"), true);
+        }
+      } catch (e) {
+        showToast("❌ Error de conexión", true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Confirmar Check";
+        selected.clear();
+        updateBar();
+        cargarCajas();
+      }
+    }
+
+    // ── Toast ──
+    function showToast(msg, isError = false) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.className = "toast" + (isError ? " error" : "") + " show";
+      setTimeout(() => { t.className = "toast"; }, 2500);
+    }
+
+    // ── Init ──
+    cargarCajas();
+  </script>
+</body>
+</html>
